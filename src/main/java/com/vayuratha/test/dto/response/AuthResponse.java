@@ -1,4 +1,4 @@
-package com.vayuratha.test.dto.respoonse;
+package com.vayuratha.test.dto.response;
 
 import com.vayuratha.test.roleEnum.Role;
 import lombok.AllArgsConstructor;

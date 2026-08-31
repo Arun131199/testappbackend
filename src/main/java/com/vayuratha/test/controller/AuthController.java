@@ -2,7 +2,7 @@ package com.vayuratha.test.controller;
 
 import com.vayuratha.test.dto.request.LoginRequest;
 import com.vayuratha.test.dto.request.RegisterRequest;
-import com.vayuratha.test.dto.respoonse.AuthResponse;
+import com.vayuratha.test.dto.response.AuthResponse;
 import com.vayuratha.test.service.AuthService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;

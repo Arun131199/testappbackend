@@ -1,6 +1,6 @@
 package com.vayuratha.test.service;
 
-import com.vayuratha.test.dto.respoonse.QuestionResponse;
+import com.vayuratha.test.dto.response.QuestionResponse;
 import com.vayuratha.test.entity.*;
 import com.vayuratha.test.repository.*;
 import lombok.RequiredArgsConstructor;
@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 
 import java.security.SecureRandom;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -23,6 +24,7 @@ public class ExamService {
     private final ExamRepository examRepository;
     private final ExamAssignmentRepository examAssignmentRepository;
     private final AttemptAnswerRepository attemptAnswerRepository;
+    private final ExamQuestionRepository examQuestionRepository;
 
     @Value("${app.exam.max-violations-before-auto-submit:3}")
     private int maxViolations;
@@ -46,7 +48,6 @@ public class ExamService {
             throw new IllegalStateException("You have already completed this exam");
         }
 
-        // A retry/refresh must resume the same attempt so its question order never changes mid-exam.
         if (assignment.getAttemptId() != null) {
             Optional<ExamAttempt> existingAttempt = attemptRepository.findById(assignment.getAttemptId());
             if (existingAttempt.isPresent()
@@ -55,14 +56,18 @@ public class ExamService {
             }
         }
 
-        List<Question> pool = questionRepository.findByCategoryAndActiveTrue(exam.getCategory());
-        if (pool.size() < exam.getQuestionCount()) {
-            throw new IllegalStateException("Not enough questions in bank for category: " + exam.getCategory());
+        // Pull exam-specific question IDs (assigned via addQuestionsToExam / bulk import with examId)
+        List<Long> assignedQuestionIds = examQuestionRepository.findByExamId(examId).stream()
+                .map(ExamQuestion::getQuestionId)
+                .collect(Collectors.toList());
+
+        if (assignedQuestionIds.isEmpty()) {
+            throw new IllegalStateException("No questions have been assigned to this exam yet");
         }
 
-        Collections.shuffle(pool, QUESTION_RANDOM);
+        List<Question> selected = questionRepository.findAllById(assignedQuestionIds);
+        Collections.shuffle(selected, QUESTION_RANDOM);
 
-        List<Question> selected = pool.subList(0, exam.getQuestionCount());
         String order = selected.stream()
                 .map(q -> q.getId().toString())
                 .collect(Collectors.joining(","));
@@ -86,7 +91,6 @@ public class ExamService {
         return saved;
     }
 
-    // Get ONE question by index (0-based). userId-scoped for security; correctAnswer is never returned.
     public Map<String, Object> getQuestionByIndex(String userId, Long attemptId, int index) {
         ExamAttempt attempt = getAttempt(userId, attemptId);
 
@@ -101,7 +105,6 @@ public class ExamService {
         Question question = questionRepository.findById(questionId)
                 .orElseThrow(() -> new IllegalArgumentException("Question not found"));
 
-        // Hide correctAnswer from the response
         QuestionResponse safeQuestion = new QuestionResponse(
                 question.getId(),
                 question.getQuestionText(),
@@ -122,14 +125,13 @@ public class ExamService {
         result.put("attemptId", attemptId);
         result.put("index", index);
         result.put("totalQuestions", ids.size());
-        result.put("question", safeQuestion);   // safe DTO, no correctAnswer
+        result.put("question", safeQuestion);
         result.put("selectedOption", selectedOption);
         result.put("examEndTime", getExamEndTime(attempt));
 
         return result;
     }
 
-    // Save/update a single answer as the user selects it
     public void saveAnswer(String userId, Long attemptId, Long questionId, String selectedOption) {
         ExamAttempt attempt = getAttempt(userId, attemptId);
 
@@ -164,7 +166,8 @@ public class ExamService {
 
     private Instant getExamEndTime(ExamAttempt attempt) {
         return examRepository.findById(attempt.getExamId())
-                .map(Exam::getEndTime)
+                .map(exam -> attempt.getStartedAt()
+                        .plus(exam.getDurationMinutes(), ChronoUnit.MINUTES))
                 .orElse(null);
     }
 
@@ -184,7 +187,6 @@ public class ExamService {
         return attemptRepository.save(attempt);
     }
 
-    // Manual submit by student (clicking Submit button)
     public ExamAttempt submitExam(String userId, Long attemptId, Map<Long, String> userAnswers) {
         ExamAttempt attempt = attemptRepository.findByIdAndUserId(attemptId, userId)
                 .orElseThrow(() -> new IllegalArgumentException("Attempt not found for this user"));

@@ -41,6 +41,10 @@ public class Exam {
     @Column(nullable = false, updatable = false)
     private Instant createdAt;
 
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean isDefaultForNewUsers=true;
+
     public enum ExamStatus {
         DRAFT, LIVE, CLOSED
     }
@@ -50,4 +54,5 @@ public class Exam {
         if (createdAt == null) createdAt = Instant.now();
         if (status == null) status = ExamStatus.DRAFT;
     }
+
 }

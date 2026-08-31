@@ -14,6 +14,8 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.util.List;
 
@@ -32,54 +34,60 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
 
-        http
-                .csrf(csrf -> csrf.disable())
-
-                .cors(cors ->
-                        cors.configurationSource(corsConfigurationSource())
-                )
-
-                .sessionManagement(sm ->
-                        sm.sessionCreationPolicy(
-                                SessionCreationPolicy.STATELESS
-                        )
-                )
+        http.csrf(csrf -> csrf.disable())
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
                 .authorizeHttpRequests(auth -> auth
 
-                        // CORS preflight
                         .requestMatchers(
                                 HttpMethod.OPTIONS,
                                 "/**"
                         ).permitAll()
 
-                        // Login / Register / Logout
                         .requestMatchers(
                                 "/api/v1/auth/**"
                         ).permitAll()
 
-                        // Swagger
+                        .requestMatchers("/error").permitAll()
+
                         .requestMatchers(
                                 "/swagger-ui.html",
                                 "/swagger-ui/**",
                                 "/v3/api-docs/**"
                         ).permitAll()
 
-                        // Admin
+                        // PUBLIC RPC ENQUIRY
+                        .requestMatchers(
+                                "/api/v1/rpc-enquiry/**"
+                        ).permitAll()
+
                         .requestMatchers(
                                 "/api/v1/admin/**"
                         ).hasRole("ADMIN")
 
-                        // Exam + Results
                         .requestMatchers(
                                 "/api/v1/exam/**",
                                 "/api/v1/results/**"
                         ).hasAnyRole("ADMIN", "USER")
 
-                        // Student
                         .requestMatchers(
-                                "/api/v1/student/**"
-                        ).hasAnyRole("ADMIN", "USER")
+                                        HttpMethod.OPTIONS,
+                                        "/**"
+                                ).permitAll()
+
+                        .requestMatchers(
+                                        HttpMethod.POST,
+                                        "/api/v1/rpc-enquiry"
+                        ).permitAll()
+
+                        .requestMatchers(
+                                HttpMethod.POST,
+                                "/api/v1/career-dev/enquiry"
+                        ).permitAll()
+
+                        .requestMatchers("/api/v1/special-offers/enroll").permitAll()
+                        .requestMatchers("/api/v1/whatsapp/**").permitAll()
 
                         .anyRequest().authenticated()
                 )
@@ -99,7 +107,9 @@ public class SecurityConfig {
 
         config.setAllowedOrigins(List.of(
                 "http://localhost:3000",
-                "https://vayuratha-t-estapp.vercel.app"
+                "https://vayuratha-t-estapp.vercel.app",
+                "http://localhost:5173",
+                "https://www.vayuratha.com/"
         ));
 
         config.setAllowedMethods(List.of(

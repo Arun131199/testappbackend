@@ -1,11 +1,14 @@
 package com.vayuratha.test.service;
 
+import com.vayuratha.test.entity.Exam;
+import com.vayuratha.test.entity.ExamQuestion;
 import com.vayuratha.test.entity.Question;
+import com.vayuratha.test.repository.ExamQuestionRepository;
+import com.vayuratha.test.repository.ExamRepository;
 import com.vayuratha.test.repository.QuestionRepository;
-import lombok.AllArgsConstructor;
+import lombok.RequiredArgsConstructor;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -14,25 +17,30 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Service
-@AllArgsConstructor
+@RequiredArgsConstructor
 public class QuestionImportService {
-    @Autowired
+
     private final QuestionRepository questionRepository;
+    private final ExamQuestionRepository examQuestionRepository;
+    private final ExamRepository examRepository;
 
-    public ImportResult importFromExcel(MultipartFile file) throws IOException {
-        List<Question> toSave=new ArrayList<>();
-        int errorCount=0;
-        try(Workbook workbook=new XSSFWorkbook(file.getInputStream())) {
+    public ImportResult importFromExcel(MultipartFile file, Long examId) throws IOException {
+        if (examId != null && examRepository.findById(examId).isEmpty()) {
+            throw new IllegalArgumentException("Exam not found: " + examId);
+        }
+
+        List<Question> toSave = new ArrayList<>();
+        int errorCount = 0;
+
+        try (Workbook workbook = new XSSFWorkbook(file.getInputStream())) {
             Sheet sheet = workbook.getSheetAt(0);
-            for (int i=1;i<=sheet.getLastRowNum();i++){
-                Row row=sheet.getRow(i);
-                if(row==null){
-                    continue;
-                }
+            for (int i = 1; i <= sheet.getLastRowNum(); i++) {
+                Row row = sheet.getRow(i);
+                if (row == null) continue;
 
-                try{
-                    String qText=getCell(row,0);
-                    String optA=getCell(row,1);
+                try {
+                    String qText = getCell(row, 0);
+                    String optA = getCell(row, 1);
                     String optB = getCell(row, 2);
                     String optC = getCell(row, 3);
                     String optD = getCell(row, 4);
@@ -53,13 +61,30 @@ public class QuestionImportService {
                             .active(true)
                             .build());
 
-                }catch (Exception e){
+                } catch (Exception e) {
                     errorCount++;
                 }
             }
         }
-        questionRepository.saveAll(toSave);
-        return new ImportResult(toSave.size(), errorCount);
+
+        List<Question> saved = questionRepository.saveAll(toSave);
+
+        if (examId != null) {
+            for (Question question : saved) {
+                if (!examQuestionRepository.existsByExamIdAndQuestionId(examId, question.getId())) {
+                    examQuestionRepository.save(
+                            ExamQuestion.builder().examId(examId).questionId(question.getId()).build()
+                    );
+                }
+            }
+
+            Exam exam = examRepository.findById(examId).orElseThrow();
+            long total = examQuestionRepository.countByExamId(examId);
+            exam.setQuestionCount((int) total);
+            examRepository.save(exam);
+        }
+
+        return new ImportResult(saved.size(), errorCount);
     }
 
     private String getCell(Row row, int idx) {
@@ -70,5 +95,4 @@ public class QuestionImportService {
     }
 
     public record ImportResult(int imported, int failed) {}
-
 }

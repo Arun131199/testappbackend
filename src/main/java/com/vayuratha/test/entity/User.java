@@ -15,7 +15,7 @@ import java.time.Instant;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-@Table(name = "users")
+@Table(name = "test_app_users")
 
 public class User {
     @Id
@@ -37,6 +37,9 @@ public class User {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private Role role;
+
+    @Column(unique = true, nullable = false, length = 15)
+    private String mobile;
 
     @Column(nullable = false,updatable = false)
     private Instant createdAt;

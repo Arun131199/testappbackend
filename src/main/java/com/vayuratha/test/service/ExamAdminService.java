@@ -1,19 +1,15 @@
 package com.vayuratha.test.service;
 
-import com.vayuratha.test.dto.respoonse.AdminStatsResponse;
-import com.vayuratha.test.entity.Exam;
-import com.vayuratha.test.entity.ExamAssignment;
-import com.vayuratha.test.entity.ExamAttempt;
-import com.vayuratha.test.entity.User;
-import com.vayuratha.test.repository.ExamAssignmentRepository;
-import com.vayuratha.test.repository.ExamAttemptRepository;
-import com.vayuratha.test.repository.ExamRepository;
-import com.vayuratha.test.repository.UserRepository;
+import com.vayuratha.test.dto.response.AdminStatsResponse;
+import com.vayuratha.test.entity.*;
+import com.vayuratha.test.repository.*;
 import com.vayuratha.test.roleEnum.Role;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -22,13 +18,20 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class ExamAdminService {
 
+    private static final long DEFAULT_LIVE_WINDOW_DAYS = 365;
+
     private final ExamRepository examRepository;
     private final ExamAssignmentRepository examAssignmentRepository;
     private final UserRepository userRepository;
     private final ExamAttemptRepository examAttemptRepository;
+    private final ExamQuestionRepository examQuestionRepository;
+    private final QuestionRepository questionRepository;
 
     public Exam createExam(Exam exam) {
-        exam.setStatus(Exam.ExamStatus.DRAFT);
+        Instant now = Instant.now();
+        exam.setStatus(Exam.ExamStatus.LIVE);
+        exam.setStartTime(now);
+        exam.setEndTime(now.plus(DEFAULT_LIVE_WINDOW_DAYS, ChronoUnit.DAYS));
         return examRepository.save(exam);
     }
 
@@ -47,6 +50,7 @@ public class ExamAdminService {
         exam.setEndTime(endTime);
         return examRepository.save(exam);
     }
+
     public Exam closeExam(Long examId) {
         Exam exam = examRepository.findById(examId)
                 .orElseThrow(() -> new IllegalArgumentException("Exam not found"));
@@ -91,6 +95,61 @@ public class ExamAdminService {
     public List<Exam> getLiveExams() {
         return examRepository.findByStatus(Exam.ExamStatus.LIVE);
     }
+
+    // ===== Exam <-> Question assignment =====
+
+    public String addQuestionsToExam(Long examId, List<Long> questionIds) {
+        Exam exam = examRepository.findById(examId)
+                .orElseThrow(() -> new IllegalArgumentException("Exam not found"));
+
+        int added = 0;
+        for (Long questionId : questionIds) {
+            if (!questionRepository.existsById(questionId)) continue;
+            if (!examQuestionRepository.existsByExamIdAndQuestionId(examId, questionId)) {
+                examQuestionRepository.save(
+                        ExamQuestion.builder().examId(examId).questionId(questionId).build()
+                );
+                added++;
+            }
+        }
+
+        long total = examQuestionRepository.countByExamId(examId);
+        exam.setQuestionCount((int) total);
+        examRepository.save(exam);
+
+        return "Added " + added + " question(s). Exam now has " + total + " question(s) total.";
+    }
+
+    public String removeQuestionFromExam(Long examId, Long questionId) {
+        examQuestionRepository.deleteByExamIdAndQuestionId(examId, questionId);
+
+        Exam exam = examRepository.findById(examId)
+                .orElseThrow(() -> new IllegalArgumentException("Exam not found"));
+        long total = examQuestionRepository.countByExamId(examId);
+        exam.setQuestionCount((int) total);
+        examRepository.save(exam);
+
+        return "Removed. Exam now has " + total + " question(s) total.";
+    }
+
+    public List<Question> getQuestionsForExam(Long examId) {
+        List<Long> questionIds = examQuestionRepository.findByExamId(examId).stream()
+                .map(ExamQuestion::getQuestionId)
+                .toList();
+        return questionRepository.findAllById(questionIds);
+    }
+
+    public String addQuestionsByCategory(Long examId, String category, int count) {
+        List<Question> pool = questionRepository.findByCategoryAndActiveTrue(category);
+        if (pool.size() < count) {
+            throw new IllegalStateException("Not enough questions in category: " + category);
+        }
+        Collections.shuffle(pool);
+        List<Long> selectedIds = pool.subList(0, count).stream().map(Question::getId).toList();
+        return addQuestionsToExam(examId, selectedIds);
+    }
+
+    // ===== Stats =====
 
     public AdminStatsResponse getStats() {
         long totalStudents = userRepository.findAll().stream()

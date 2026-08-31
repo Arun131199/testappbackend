@@ -1,7 +1,8 @@
 package com.vayuratha.test.controller;
 
-import com.vayuratha.test.dto.respoonse.AdminStatsResponse;
+import com.vayuratha.test.dto.response.AdminStatsResponse;
 import com.vayuratha.test.entity.Exam;
+import com.vayuratha.test.entity.Question;
 import com.vayuratha.test.service.ExamAdminService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -30,7 +31,6 @@ public class AdminExamController {
         return ResponseEntity.ok(examAdminService.createExam(exam));
     }
 
-    // Accepts startTime/endTime as IST wall-clock strings, e.g. "2026-08-13T15:05:00" (no Z suffix)
     @PutMapping("/{examId}/publish")
     public ResponseEntity<Exam> publishExam(@PathVariable Long examId, @RequestBody Map<String, String> body) {
         LocalDateTime startLocal = LocalDateTime.parse(body.get("startTime"), FORMATTER);
@@ -70,5 +70,30 @@ public class AdminExamController {
     @GetMapping("/stats")
     public ResponseEntity<AdminStatsResponse> getStats() {
         return ResponseEntity.ok(examAdminService.getStats());
+    }
+
+    // ===== Exam <-> Question assignment =====
+
+    @PostMapping("/{examId}/questions")
+    public ResponseEntity<String> addQuestions(@PathVariable Long examId, @RequestBody List<Long> questionIds) {
+        return ResponseEntity.ok(examAdminService.addQuestionsToExam(examId, questionIds));
+    }
+
+    @PostMapping("/{examId}/questions/by-category")
+    public ResponseEntity<String> addQuestionsByCategory(
+            @PathVariable Long examId,
+            @RequestParam String category,
+            @RequestParam int count) {
+        return ResponseEntity.ok(examAdminService.addQuestionsByCategory(examId, category, count));
+    }
+
+    @DeleteMapping("/{examId}/questions/{questionId}")
+    public ResponseEntity<String> removeQuestion(@PathVariable Long examId, @PathVariable Long questionId) {
+        return ResponseEntity.ok(examAdminService.removeQuestionFromExam(examId, questionId));
+    }
+
+    @GetMapping("/{examId}/questions")
+    public ResponseEntity<List<Question>> getExamQuestions(@PathVariable Long examId) {
+        return ResponseEntity.ok(examAdminService.getQuestionsForExam(examId));
     }
 }

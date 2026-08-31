@@ -1,8 +1,8 @@
 package com.vayuratha.test.controller;
 
 import com.vayuratha.test.dto.request.RegisterRequest;
-import com.vayuratha.test.dto.respoonse.AuthResponse;
-import com.vayuratha.test.dto.respoonse.UserResponse;
+import com.vayuratha.test.dto.response.AuthResponse;
+import com.vayuratha.test.dto.response.UserResponse;
 import com.vayuratha.test.entity.Question;
 import com.vayuratha.test.entity.User;
 import com.vayuratha.test.repository.QuestionRepository;
@@ -28,7 +28,6 @@ public class AdminController {
     private final QuestionRepository questionRepository;
     private final UserRepository userRepository;
 
-
     @GetMapping("/users")
     public ResponseEntity<List<UserResponse>> getAllUsers() {
         return ResponseEntity.ok(
@@ -44,18 +43,20 @@ public class AdminController {
         return ResponseEntity.ok(questionRepository.findAll());
     }
 
-    // Admin registers a student/user — this is the real "register user" flow
     @PostMapping("/users")
     public ResponseEntity<AuthResponse> createUser(@RequestBody RegisterRequest req) {
         return ResponseEntity.ok(authService.registerUser(req));
     }
 
-    // Admin bulk-imports questions via Excel
+    // Bulk-import questions via Excel.Pass examId to link every imported question directly to that exam.
+    // Omit examId to import into the general question bank only.
     @PostMapping(value = "/questions/import", consumes = "multipart/form-data")
     public ResponseEntity<QuestionImportService.ImportResult> importQuestions(
-            @RequestParam("file") MultipartFile file) throws IOException {
-        return ResponseEntity.ok(questionImportService.importFromExcel(file));
+            @RequestParam("file") MultipartFile file,
+            @RequestParam(value = "examId", required = false) Long examId) throws IOException {
+        return ResponseEntity.ok(questionImportService.importFromExcel(file, examId));
     }
+
     private UserResponse toUserResponse(User u) {
         return new UserResponse(u.getId(), u.getUserId(), u.getFullName(), u.getEmail(), u.getRole(), u.getCreatedAt());
     }

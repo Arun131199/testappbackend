@@ -1,4 +1,4 @@
-package com.vayuratha.test.dto.respoonse;
+package com.vayuratha.test.dto.response;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;

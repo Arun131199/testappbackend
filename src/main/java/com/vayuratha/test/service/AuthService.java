@@ -2,7 +2,7 @@ package com.vayuratha.test.service;
 
 import com.vayuratha.test.dto.request.LoginRequest;
 import com.vayuratha.test.dto.request.RegisterRequest;
-import com.vayuratha.test.dto.respoonse.AuthResponse;
+import com.vayuratha.test.dto.response.AuthResponse;
 import com.vayuratha.test.entity.User;
 import com.vayuratha.test.repository.UserRepository;
 import com.vayuratha.test.roleEnum.Role;
@@ -34,6 +34,7 @@ public class AuthService {
                 .userId(generatedUserId)
                 .fullName(request.getFullName())
                 .email(request.getEmail())
+                .mobile(request.getMobile())
                 .passwordHash(passwordEncoder.encode(request.getPassword()))
                 .role(request.getRole() == null ? Role.USER : request.getRole())
                 .build();
@@ -44,9 +45,11 @@ public class AuthService {
 
     private String generateUserId() {
         Long nextVal = ((Number) entityManager
-                .createNativeQuery("SELECT nextval('user_id_seq')")
-                .getSingleResult()).longValue();
-        return String.format("USR%03d", nextVal);   // USR001, USR002, USR010, USR100...
+                .createNativeQuery("SELECT nextval('ecom.user_id_seq')")
+                .getSingleResult())
+                .longValue();
+
+        return String.format("USR%03d", nextVal);
     }
 
     public AuthResponse login(LoginRequest request) {

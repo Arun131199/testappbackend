@@ -22,45 +22,160 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     private final JwtUtil jwtUtil;
 
     @Override
-    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
+    protected void doFilterInternal(
+            HttpServletRequest request,
+            HttpServletResponse response,
+            FilterChain filterChain
+    ) throws ServletException, IOException {
+
+        System.out.println("========== JWT DEBUG ==========");
+        System.out.println("REQUEST METHOD: " + request.getMethod());
+        System.out.println("REQUEST URI: " + request.getRequestURI());
+
         String token = extractTokenFromHeader(request);
-        if (token == null) {
-            token = extractTokenFromCookie(request);
+
+        if (token != null) {
+            System.out.println("TOKEN SOURCE: Authorization Header");
         }
 
-        if (token != null && jwtUtil.isValid(token)) {
-            String role = jwtUtil.extractRole(token);
-            String userId = jwtUtil.extractPublicUserId(token);
+        if (token == null) {
+            token = extractTokenFromCookie(request);
 
-            if (userId != null && !userId.isBlank()) {
-                var auth = new UsernamePasswordAuthenticationToken(
-                        userId, null, List.of(new SimpleGrantedAuthority("ROLE_" + role))
-                );
-                SecurityContextHolder.getContext().setAuthentication(auth);
+            if (token != null) {
+                System.out.println("TOKEN SOURCE: Cookie");
             }
         }
 
+        System.out.println("TOKEN EXISTS: " + (token != null));
+
+        if (token == null) {
+            System.out.println("JWT RESULT: No token found");
+            System.out.println("==============================");
+
+            filterChain.doFilter(request, response);
+            return;
+        }
+
+        boolean validToken = jwtUtil.isValid(token);
+
+        System.out.println("TOKEN VALID: " + validToken);
+
+        if (!validToken) {
+            System.out.println("JWT RESULT: Invalid token");
+            System.out.println("==============================");
+
+            filterChain.doFilter(request, response);
+            return;
+        }
+
+        String role = jwtUtil.extractRole(token);
+        String publicUserId = jwtUtil.extractPublicUserId(token);
+
+        System.out.println("JWT ROLE: " + role);
+        System.out.println("JWT PUBLIC USER ID: " + publicUserId);
+
+        if (publicUserId == null || publicUserId.isBlank()) {
+
+            System.out.println(
+                    "JWT RESULT: Public user ID missing"
+            );
+
+            System.out.println("==============================");
+
+            filterChain.doFilter(request, response);
+            return;
+        }
+
+        if (role == null || role.isBlank()) {
+
+            System.out.println(
+                    "JWT RESULT: Role missing"
+            );
+
+            System.out.println("==============================");
+
+            filterChain.doFilter(request, response);
+            return;
+        }
+
+        String authorityName = "ROLE_" + role;
+
+        var authority =
+                new SimpleGrantedAuthority(authorityName);
+
+        System.out.println(
+                "SPRING AUTHORITY: "
+                        + authority.getAuthority()
+        );
+
+        var authentication =
+                new UsernamePasswordAuthenticationToken(
+                        publicUserId,
+                        null,
+                        List.of(authority)
+                );
+
+        SecurityContextHolder
+                .getContext()
+                .setAuthentication(authentication);
+
+        System.out.println(
+                "AUTHENTICATION SET: "
+                        + SecurityContextHolder
+                        .getContext()
+                        .getAuthentication()
+        );
+
+        System.out.println(
+                "AUTHENTICATED USER: "
+                        + authentication.getPrincipal()
+        );
+
+        System.out.println(
+                "AUTHORITY: "
+                        + authentication.getAuthorities()
+        );
+
+        System.out.println("JWT RESULT: SUCCESS");
+        System.out.println("==============================");
         filterChain.doFilter(request, response);
     }
+    private String extractTokenFromHeader(
+            HttpServletRequest request
+    ) {
 
-    private String extractTokenFromHeader(HttpServletRequest request) {
-        String header = request.getHeader("Authorization");
-        if (header != null && header.startsWith("Bearer ")) {
+        String header =
+                request.getHeader("Authorization");
+
+        if (header != null &&
+                header.startsWith("Bearer ")) {
+
             return header.substring(7);
         }
+
         return null;
     }
 
-    private String extractTokenFromCookie(HttpServletRequest request) {
+    private String extractTokenFromCookie(
+            HttpServletRequest request
+    ) {
+
         Cookie[] cookies = request.getCookies();
+
         if (cookies == null) {
             return null;
         }
+
         for (Cookie cookie : cookies) {
-            if ("access_token".equals(cookie.getName())) {
+
+            if ("access_token".equals(
+                    cookie.getName()
+            )) {
+
                 return cookie.getValue();
             }
         }
+
         return null;
     }
 }

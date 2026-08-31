@@ -9,4 +9,5 @@ import java.util.List;
 @Repository
 public interface ExamRepository extends JpaRepository<Exam,Long> {
     List<Exam> findByStatus(Exam.ExamStatus status);
+    List<Exam> findByStatusAndIsDefaultForNewUsers(Exam.ExamStatus status,Boolean isDefaultForNewUsers);
 }
