@@ -65,8 +65,23 @@ public class ExamService {
             throw new IllegalStateException("No questions have been assigned to this exam yet");
         }
 
-        List<Question> selected = questionRepository.findAllById(assignedQuestionIds);
-        Collections.shuffle(selected, QUESTION_RANDOM);
+        List<Question> questionPool = questionRepository.findAllById(assignedQuestionIds).stream()
+                .filter(question -> Boolean.TRUE.equals(question.getActive()))
+                .collect(Collectors.toCollection(ArrayList::new));
+
+        int requestedQuestionCount = exam.getQuestionCount() == null ? 0 : exam.getQuestionCount();
+        if (requestedQuestionCount <= 0) {
+            throw new IllegalStateException("Exam question count must be greater than zero");
+        }
+        if (questionPool.size() < requestedQuestionCount) {
+            throw new IllegalStateException(
+                    "Exam requires " + requestedQuestionCount + " questions, but only "
+                            + questionPool.size() + " active questions are available"
+            );
+        }
+
+        Collections.shuffle(questionPool, QUESTION_RANDOM);
+        List<Question> selected = questionPool.subList(0, requestedQuestionCount);
 
         String order = selected.stream()
                 .map(q -> q.getId().toString())

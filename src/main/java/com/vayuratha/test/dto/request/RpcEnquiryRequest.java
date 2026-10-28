@@ -19,4 +19,9 @@ public class RpcEnquiryRequest {
     private String name;
     @NotBlank
     private String selected_slot;
+
+    @NotBlank
+    private String razorpayOrderId;
+    @NotBlank
+    private String razorpayPaymentId;
 }

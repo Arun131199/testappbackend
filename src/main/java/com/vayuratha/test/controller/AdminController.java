@@ -53,8 +53,9 @@ public class AdminController {
     @PostMapping(value = "/questions/import", consumes = "multipart/form-data")
     public ResponseEntity<QuestionImportService.ImportResult> importQuestions(
             @RequestParam("file") MultipartFile file,
-            @RequestParam(value = "examId", required = false) Long examId) throws IOException {
-        return ResponseEntity.ok(questionImportService.importFromExcel(file, examId));
+            @RequestParam(value = "examId", required = false) Long examId,
+            @RequestParam(value = "questionsPerAttempt", defaultValue = "50") int questionsPerAttempt) throws IOException {
+        return ResponseEntity.ok(questionImportService.importFromExcel(file, examId, questionsPerAttempt));
     }
 
     private UserResponse toUserResponse(User u) {

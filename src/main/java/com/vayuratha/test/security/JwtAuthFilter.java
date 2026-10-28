@@ -14,6 +14,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Locale;
 
 @Component
 @AllArgsConstructor
@@ -98,7 +99,10 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             return;
         }
 
-        String authorityName = "ROLE_" + role;
+        String normalizedRole = role.trim().toUpperCase(Locale.ROOT);
+        String authorityName = normalizedRole.startsWith("ROLE_")
+                ? normalizedRole
+                : "ROLE_" + normalizedRole;
 
         var authority =
                 new SimpleGrantedAuthority(authorityName);

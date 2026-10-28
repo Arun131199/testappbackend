@@ -32,7 +32,7 @@ public class AuthController {
         return withAuthCookie(authService.registerUser(req));
     }
 
-    @PostMapping("login")
+    @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest req) {
         return withAuthCookie(authService.login(req));
     }
@@ -46,7 +46,7 @@ public class AuthController {
                         )
                         .httpOnly(true)
                         .secure(secureCookie)
-                        .sameSite("None")
+                        .sameSite(secureCookie ? "None" : "Lax")
                         .path("/")
                         .maxAge(jwtExpirationMs / 1000)
                         .build();
@@ -80,7 +80,7 @@ public class AuthController {
                 )
                 .httpOnly(false)
                 .secure(secureCookie)
-                .sameSite("None")
+                .sameSite(secureCookie ? "None" : "Lax")
                 .path("/")
                 .maxAge(jwtExpirationMs / 1000)
                 .build();
@@ -105,7 +105,7 @@ public class AuthController {
         return ResponseCookie.from(name, "")
                 .httpOnly(httpOnly)
                 .secure(secureCookie)
-                .sameSite("None")
+                .sameSite(secureCookie ? "None" : "Lax")
                 .path("/")
                 .maxAge(0)
                 .build();

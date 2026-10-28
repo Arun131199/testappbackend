@@ -39,4 +39,11 @@ public class RpcEnquiry {
     private String address;
 
     private String additional_note;
+
+    private String razorpayOrderId;
+
+    private String razorpayPaymentId;
+
+    @Builder.Default
+    private String paymentStatus = "success";
 }

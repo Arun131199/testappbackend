@@ -89,6 +89,7 @@ public class ExamAdminService {
     }
 
     public List<Exam> getAllExams() {
+        System.out.println(examRepository.findAll());
         return examRepository.findAll();
     }
 

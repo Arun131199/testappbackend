@@ -1,5 +1,6 @@
 package com.vayuratha.test.security;
 
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -14,8 +15,6 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
-import jakarta.servlet.http.HttpServletResponse;
-import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.util.List;
 
@@ -37,101 +36,56 @@ public class SecurityConfig {
         http.csrf(csrf -> csrf.disable())
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-
-                .authorizeHttpRequests(auth -> auth
-
-                        .requestMatchers(
-                                HttpMethod.OPTIONS,
-                                "/**"
-                        ).permitAll()
-
-                        .requestMatchers(
-                                "/api/v1/auth/**"
-                        ).permitAll()
-
-                        .requestMatchers("/error").permitAll()
-
-                        .requestMatchers(
-                                "/swagger-ui.html",
-                                "/swagger-ui/**",
-                                "/v3/api-docs/**"
-                        ).permitAll()
-
-                        // PUBLIC RPC ENQUIRY
-                        .requestMatchers(
-                                "/api/v1/rpc-enquiry/**"
-                        ).permitAll()
-
-                        .requestMatchers(
-                                "/api/v1/admin/**"
-                        ).hasRole("ADMIN")
-
-                        .requestMatchers(
-                                "/api/v1/exam/**",
-                                "/api/v1/results/**"
-                        ).hasAnyRole("ADMIN", "USER")
-
-                        .requestMatchers(
-                                        HttpMethod.OPTIONS,
-                                        "/**"
-                                ).permitAll()
-
-                        .requestMatchers(
-                                        HttpMethod.POST,
-                                        "/api/v1/rpc-enquiry"
-                        ).permitAll()
-
-                        .requestMatchers(
-                                HttpMethod.POST,
-                                "/api/v1/career-dev/enquiry"
-                        ).permitAll()
-
-                        .requestMatchers("/api/v1/special-offers/enroll").permitAll()
-                        .requestMatchers("/api/v1/whatsapp/**").permitAll()
-
-                        .anyRequest().authenticated()
+                .exceptionHandling(ex -> ex
+                        .authenticationEntryPoint((req, res, e) ->
+                                res.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized"))
+                        .accessDeniedHandler((req, res, e) ->
+                                res.sendError(HttpServletResponse.SC_FORBIDDEN, "Forbidden"))
                 )
 
-                .addFilterBefore(
-                        jwtAuthFilter,
-                        UsernamePasswordAuthenticationFilter.class
-                );
-
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                        .requestMatchers("/api/v1/auth/**").permitAll()
+                        .requestMatchers("/error").permitAll()
+                        .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**")
+                        .permitAll()
+                        // PUBLIC RPC ENQUIRY
+                        .requestMatchers("/api/v1/rpc-enquiry/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/career-dev/enquiry").permitAll()
+                        .requestMatchers("/api/v1/special-offers/enroll").permitAll()
+                        .requestMatchers("/api/v1/whatsapp/**").permitAll()
+                        .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
+                        .requestMatchers("/api/v1/exam/**", "/api/v1/results/**")
+                        .hasAnyRole("ADMIN", "USER")
+                        .anyRequest().authenticated()
+                )
+                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
-
         CorsConfiguration config = new CorsConfiguration();
-
         config.setAllowedOrigins(List.of(
                 "http://localhost:3000",
-                "https://vayuratha-t-estapp.vercel.app",
                 "http://localhost:5173",
-                "https://www.vayuratha.com/"
+                "https://vayuratha-t-estapp.vercel.app",
+                "https://www.vayuratha.com",
+                "https://test.vayuratha.com"
         ));
 
         config.setAllowedMethods(List.of(
                 "GET",
                 "POST",
                 "PUT",
+                "PATCH",
                 "DELETE",
                 "OPTIONS"
         ));
-
         config.setAllowedHeaders(List.of("*"));
-
         config.setAllowCredentials(true);
-
-        UrlBasedCorsConfigurationSource source =
-                new UrlBasedCorsConfigurationSource();
-
-        source.registerCorsConfiguration(
-                "/**",
-                config
-        );
-
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", config);
         return source;
     }
 }

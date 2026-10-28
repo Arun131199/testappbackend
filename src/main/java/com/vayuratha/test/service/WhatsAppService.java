@@ -154,4 +154,56 @@ public class WhatsAppService {
         }
         return null;
     }
+
+    public void sendRpcBookingConfirmation(String mobile, String name, int slotNumber, java.time.LocalDate slotDate) {
+        try {
+            String cleanMobile = mobile.replaceAll("\\D", "");
+            if (cleanMobile.length() == 10) { cleanMobile = "91" + cleanMobile; }
+
+            String formattedDate = slotDate.format(java.time.format.DateTimeFormatter.ofPattern("dd MMM yyyy"));
+
+            String url = "https://graph.facebook.com/v21.0/" + phoneNumberId + "/messages";
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            headers.setBearerAuth(accessToken);
+
+            Map<String, Object> template = new HashMap<>();
+            template.put("name", "rpc_booking_confirmation");
+            template.put("language", Map.of("code", "en"));
+            template.put(
+                    "components", List.of(Map.of("type", "body", "parameters",
+                            List.of(
+                                    Map.of("type", "text", "text", name),
+                                    Map.of("type", "text", "text", String.valueOf(slotNumber)),
+                                    Map.of("type", "text", "text", formattedDate)
+                            ))
+                    )
+            );
+            Map<String, Object> requestBody = new HashMap<>();
+            requestBody.put("messaging_product", "whatsapp");
+            requestBody.put("to", cleanMobile);
+            requestBody.put("type", "template");
+            requestBody.put("template", template);
+            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
+
+            ResponseEntity<String> response = restTemplate.postForEntity(url, entity, String.class);
+            System.out.println("======================================");
+            System.out.println("RPC WHATSAPP CONFIRMATION SENT");
+            System.out.println("TO   : " + cleanMobile);
+            System.out.println("SLOT : " + slotNumber);
+            System.out.println("RESPONSE : " + response.getBody());
+            System.out.println("======================================");
+        } catch (HttpClientErrorException e) {
+            System.out.println("======================================");
+            System.out.println("RPC WHATSAPP CONFIRMATION FAILED");
+            System.out.println("STATUS : " + e.getStatusCode());
+            System.out.println("ERROR  : " + e.getResponseBodyAsString());
+            System.out.println("======================================");
+        } catch (Exception e) {
+            System.out.println("======================================");
+            System.out.println("RPC WHATSAPP CONFIRMATION FAILED");
+            System.out.println("ERROR : " + e.getMessage());
+            System.out.println("======================================");
+        }
+    }
 }
