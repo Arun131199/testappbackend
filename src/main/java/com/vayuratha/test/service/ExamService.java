@@ -18,7 +18,6 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class ExamService {
     private static final SecureRandom QUESTION_RANDOM = new SecureRandom();
-
     private final QuestionRepository questionRepository;
     private final ExamAttemptRepository attemptRepository;
     private final ExamRepository examRepository;
@@ -206,6 +205,7 @@ public class ExamService {
         ExamAttempt attempt = attemptRepository.findByIdAndUserId(attemptId, userId)
                 .orElseThrow(() -> new IllegalArgumentException("Attempt not found for this user"));
 
+
         if (attempt.getStatus() != ExamAttempt.AttemptStatus.IN_PROGRESS) {
             return attempt;
         }
@@ -215,6 +215,17 @@ public class ExamService {
                 .collect(Collectors.toMap(AttemptAnswer::getQuestionId, AttemptAnswer::getSelectedOption)));
         if (userAnswers != null) {
             finalAnswers.putAll(userAnswers);
+        }
+
+        List<Long> unansweredQuestionIds = Arrays.stream(attempt.getQuestionOrder().split(","))
+                .map(Long::parseLong)
+                .filter(questionId -> {
+                    String answer = finalAnswers.get(questionId);
+                    return answer == null || answer.isBlank();
+                })
+                .toList();
+        if (!unansweredQuestionIds.isEmpty()) {
+            throw new IllegalStateException("Answer all questions before submitting the exam");
         }
 
         return scoreAndFinish(attempt, finalAnswers, ExamAttempt.AttemptStatus.SUBMITTED);
