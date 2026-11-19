@@ -13,4 +13,5 @@ public interface ExamAttemptRepository extends JpaRepository<ExamAttempt,Long> {
     Optional<ExamAttempt> findByIdAndUserId(Long id, String userId);
     List<ExamAttempt> findAllByOrderBySubmittedAtDesc();
     Optional<ExamAttempt> findByExamIdAndUserId(Long examId, String userId);
+    boolean existsByExamId(Long examId);
 }

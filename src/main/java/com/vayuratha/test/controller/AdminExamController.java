@@ -7,6 +7,7 @@ import com.vayuratha.test.service.ExamAdminService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -47,6 +48,29 @@ public class AdminExamController {
         return ResponseEntity.ok(examAdminService.closeExam(examId));
     }
 
+    @DeleteMapping("/{examId}")
+    public ResponseEntity<Void> deleteExam(@PathVariable Long examId) {
+        examAdminService.deleteExam(examId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @ExceptionHandler(ResponseStatusException.class)
+    public ResponseEntity<Map<String, Object>> handleStatusException(ResponseStatusException exception) {
+        String message = exception.getReason() != null ? exception.getReason() : "Request failed";
+        int status = exception.getStatusCode().value();
+        String errorCode = switch (status) {
+            case 404 -> "EXAM_NOT_FOUND";
+            case 409 -> "EXAM_HAS_ATTEMPTS";
+            default -> "REQUEST_FAILED";
+        };
+
+        return ResponseEntity.status(exception.getStatusCode()).body(Map.of(
+                "status", status,
+                "errorCode", errorCode,
+                "message", message)
+
+        );
+    }
     @PostMapping("/{examId}/assign")
     public ResponseEntity<String> assignToUsers(@PathVariable Long examId, @RequestBody List<String> userIds) {
         return ResponseEntity.ok(examAdminService.assignToUsers(examId, userIds));
@@ -60,6 +84,16 @@ public class AdminExamController {
     @GetMapping
     public ResponseEntity<List<Exam>> getAllExams() {
         return ResponseEntity.ok(examAdminService.getAllExams());
+    }
+
+    @GetMapping("/archived")
+    public ResponseEntity<List<Exam>> getArchivedExams() {
+        return ResponseEntity.ok(examAdminService.getArchivedExams());
+    }
+
+    @PutMapping("/{examId}/restore")
+    public ResponseEntity<Exam> restoreExam(@PathVariable Long examId) {
+        return ResponseEntity.ok(examAdminService.restoreExam(examId));
     }
 
     @GetMapping("/live")

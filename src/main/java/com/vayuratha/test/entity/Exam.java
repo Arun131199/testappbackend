@@ -41,9 +41,14 @@ public class Exam {
     @Column(nullable = false, updatable = false)
     private Instant createdAt;
 
+
     @Column(nullable = false)
     @Builder.Default
     private Boolean isDefaultForNewUsers=true;
+
+    @Builder.Default
+    @Column(nullable = false)
+    private Boolean isArchived = false;
 
     public enum ExamStatus {
         DRAFT, LIVE, CLOSED

@@ -6,6 +6,9 @@ import com.vayuratha.test.repository.*;
 import com.vayuratha.test.roleEnum.Role;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -58,6 +61,17 @@ public class ExamAdminService {
         return examRepository.save(exam);
     }
 
+    @Transactional
+    public void deleteExam(Long examId) {
+        Exam exam = examRepository.findByIdAndIsArchivedFalse(examId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Exam not found"
+                ));
+        exam.setIsArchived(true);
+        examRepository.save(exam);
+    }
+
     public String assignToUsers(Long examId, List<String> userIds) {
         int count = 0;
         for (String userId : userIds) {
@@ -90,17 +104,18 @@ public class ExamAdminService {
 
     public List<Exam> getAllExams() {
         System.out.println(examRepository.findAll());
-        return examRepository.findAll();
+        return examRepository.findByIsArchivedFalse();
     }
 
     public List<Exam> getLiveExams() {
-        return examRepository.findByStatus(Exam.ExamStatus.LIVE);
+        return examRepository.findByStatusAndIsArchivedFalse(
+                Exam.ExamStatus.LIVE
+        );
     }
 
-    // ===== Exam <-> Question assignment =====
 
     public String addQuestionsToExam(Long examId, List<Long> questionIds) {
-        Exam exam = examRepository.findById(examId)
+        Exam exam = examRepository.findByIdAndIsArchivedFalse(examId)
                 .orElseThrow(() -> new IllegalArgumentException("Exam not found"));
 
         int added = 0;
@@ -150,8 +165,6 @@ public class ExamAdminService {
         return addQuestionsToExam(examId, selectedIds);
     }
 
-    // ===== Stats =====
-
     public AdminStatsResponse getStats() {
         long totalStudents = userRepository.findAll().stream()
                 .filter(u -> u.getRole() == Role.USER)
@@ -185,5 +198,20 @@ public class ExamAdminService {
                 }).toList();
 
         return new AdminStatsResponse(totalStudents, activeExams, overallPassPct, categoryStats);
+    }
+
+    public List<Exam> getArchivedExams() {
+        return examRepository.findByIsArchivedTrue();
+    }
+
+    @Transactional
+    public Exam restoreExam(Long examId) {
+        Exam exam = examRepository.findByIdAndIsArchivedTrue(examId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Archived exam not found"
+                ));
+        exam.setIsArchived(false);
+        return examRepository.save(exam);
     }
 }
