@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 import java.util.Map;
+import java.time.Instant;
 
 @RestController
 @RequestMapping("/api/v1/student")
@@ -32,8 +33,11 @@ public class StudentExamController {
         List<Exam> exams = examRepository.findAllById(examIds);
 
         // only show if the exam is still LIVE
+        Instant now = Instant.now();
         List<Exam> liveOnly = exams.stream()
                 .filter(e -> e.getStatus() == Exam.ExamStatus.LIVE)
+                .filter(e -> e.getStartTime() == null || !now.isBefore(e.getStartTime()))
+                .filter(e -> e.getEndTime() == null || now.isBefore(e.getEndTime()))
                 .toList();
 
         return ResponseEntity.ok(liveOnly);

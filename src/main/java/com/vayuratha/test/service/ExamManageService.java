@@ -55,7 +55,6 @@ public class ExamManageService {
     @Transactional
     public Exam updateExam(Long examId, ExamUpdateRequest req) {
         Exam exam = getExam(examId);
-
         if (req.getTitle() != null) {
             String title = req.getTitle().trim();
             if (title.isEmpty()) {
@@ -118,8 +117,13 @@ public class ExamManageService {
             }
         }
 
+        Instant now = Instant.now();
+        if (start != null && start.isAfter(now) && status == Exam.ExamStatus.LIVE) {
+            status = Exam.ExamStatus.DRAFT;
+        }
+
         if (scheduleTouched && status == Exam.ExamStatus.LIVE
-                && end != null && !end.isAfter(Instant.now())) {
+                && end != null && !end.isAfter(now)) {
             throw badRequest("A LIVE exam must have an end time in the future");
         }
 

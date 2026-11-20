@@ -32,11 +32,16 @@ public class ExamService {
         Exam exam = examRepository.findById(examId)
                 .orElseThrow(() -> new IllegalArgumentException("Exam not found"));
 
+        Instant now = Instant.now();
+        if (exam.getStartTime() != null && now.isBefore(exam.getStartTime())) {
+            throw new IllegalStateException("Exam has not started yet");
+        }
+
         if (exam.getStatus() != Exam.ExamStatus.LIVE) {
             throw new IllegalStateException("Exam is not live");
         }
 
-        if (exam.getEndTime() != null && Instant.now().isAfter(exam.getEndTime())) {
+        if (exam.getEndTime() != null && !now.isBefore(exam.getEndTime())) {
             throw new IllegalStateException("Exam time window has ended");
         }
 

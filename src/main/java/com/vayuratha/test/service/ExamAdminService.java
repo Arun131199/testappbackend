@@ -20,9 +20,7 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class ExamAdminService {
-
     private static final long DEFAULT_LIVE_WINDOW_DAYS = 365;
-
     private final ExamRepository examRepository;
     private final ExamAssignmentRepository examAssignmentRepository;
     private final UserRepository userRepository;
@@ -112,7 +110,6 @@ public class ExamAdminService {
                 Exam.ExamStatus.LIVE
         );
     }
-
 
     public String addQuestionsToExam(Long examId, List<Long> questionIds) {
         Exam exam = examRepository.findByIdAndIsArchivedFalse(examId)
